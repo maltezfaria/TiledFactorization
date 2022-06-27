@@ -14,13 +14,13 @@ end
 function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
     m,n = size(A) # number of blocks
     for i in 1:m
-        @dspawn _chol!(A[i,i],UpperTriangular,tturbo) (A[i,i],) (RW,)
         Aii = A[i,i]
+        @dspawn _chol!(@RW(Aii),UpperTriangular,tturbo) label="chol[$i,$i]"
         U = UpperTriangular(Aii)
         L = adjoint(U)
         for j in i+1:n
             Aij = A[i,j]
-            @dspawn TriangularSolve.ldiv!(L,Aij,tturbo) (Aii,Aij) (R,RW)
+            @dspawn TriangularSolve.ldiv!(@R(L),@RW(Aij),tturbo) label="ldiv![$i,$j]"
         end
         for j in i+1:m
             Aij = A[i,j]
@@ -31,14 +31,17 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
                 Aji = adjoint(Aij)
                 Aik = A[i,k]
                 # schur_complement!(Ajk,Aji,Aik,tturbo)
-                @dspawn schur_complement!(Ajk,Aji,Aik,tturbo) (Ajk,Aij,Aik) (RW,R,R)
+                @dspawn schur_complement!(@RW(Ajk),@R(Aji),@R(Aik),tturbo) label="schur(A[$j,$k],A[$j,$i],A[$i,$k])"
             end
         end
     end
     # create the factorization object. Note that fetching this will force to
     # wait on all previous tasks
-    res = @dspawn Cholesky(A.data,'U',zero(LinearAlgebra.BlasInt)) (A.data,) (R,)
-    return fetch(res)
+    # res = @dspawn Cholesky(A.data,'U',zero(LinearAlgebra.BlasInt)) (A.data,)
+    # (R,)
+    # return fetch(res)
+    DataFlowTasks.sync()
+    return Cholesky(A.data,'U',zero(LinearAlgebra.BlasInt))
 end
 
 # a fork-join approach for comparison with the data-flow parallelism

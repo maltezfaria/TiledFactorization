@@ -17,15 +17,17 @@ function _lu!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
         Aii = A[i,i]
         # TODO: for simplicity, no pivot is allowed. Pivoting the diagonal
         # blocks requires permuting the corresponding row/columns before continuining
-        @dspawn RecursiveFactorization.lu!(Aii,NoPivot(),tturbo) (Aii,) (RW,)
+        @dspawn RecursiveFactorization.lu!(@RW(Aii),NoPivot(),tturbo)
         # @dspawn LinearAlgebra.lu!(Aii) (Aii,) (RW,)
         for j in i+1:n
             Aij = A[i,j]
             Aji = A[j,i]
             @dspawn begin
+                @R Aii
+                @RW Aij Aji
                 TriangularSolve.ldiv!(UnitLowerTriangular(Aii),Aij,tturbo)
                 TriangularSolve.rdiv!(Aji,UpperTriangular(Aii),tturbo)
-            end (Aii,Aij,Aji) (R,RW,RW)
+            end
             # TriangularSolve.ldiv!(UnitLowerTriangular(Aii),Aij,tturbo)
             # TriangularSolve.rdiv!(Aji,UpperTriangular(Aii),tturbo)
         end
@@ -34,7 +36,7 @@ function _lu!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
                 Ajk = A[j,k]
                 Aji = A[j,i]
                 Aik = A[i,k]
-                @dspawn schur_complement!(Ajk,Aji,Aik,tturbo) (Ajk,Aji,Aik) (RW,R,R)
+                @dspawn schur_complement!(@RW(Ajk),@R(Aji),@R(Aik),tturbo)
                 # schur_complement!(Ajk,Aji,Aik,tturbo)
             end
         end
