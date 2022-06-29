@@ -4,43 +4,69 @@
     by `DataFlowTask`s.
 =#
 
-cholesky(A::Matrix,args...) = cholesky!(deepcopy(A),args...)
+cholesky(A::Matrix,args...;kwargs...) = cholesky!(deepcopy(A),args...;kwargs...)
 
-function cholesky!(A::Matrix,s=TILESIZE[],tturbo::Val{T}=Val(false)) where {T}
-    _cholesky!(PseudoTiledMatrix(A,s),tturbo)
+function cholesky!(A::Matrix,s=TILESIZE[],tturbo::Val{T}=Val(false);copy=Val(false)) where {T}
+    _cholesky!(PseudoTiledMatrix(A,s),tturbo,copy)
 end
 
 # tiled cholesky factorization
-function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
+function _cholesky!(A::PseudoTiledMatrix{S},tturbo::Val{T},copy::Val{C}) where {S,T,C}
     m,n = size(A) # number of blocks
+    if C
+        # copy A into contiguous blocks if copy is set to true
+        A_  = Matrix{Matrix{S}}(undef,m,n)
+        for i in 1:m
+            for j in i:n
+                A_[i,j] = Matrix{S}(undef,size(A[i,j]))
+                @dspawn copy!(@W(A_[i,j]),@R(A[i,j])) label="copyin($i,$j)"
+            end
+        end
+    else
+        A_ = A
+    end
+    # main loop
     for i in 1:m
-        Aii = A[i,i]
+        Aii     = A_[i,i]
         @dspawn _chol!(@RW(Aii),UpperTriangular,tturbo) label="chol[$i,$i]"
         U = UpperTriangular(Aii)
         L = adjoint(U)
         for j in i+1:n
-            Aij = A[i,j]
-            @dspawn TriangularSolve.ldiv!(@R(L),@RW(Aij),tturbo) label="ldiv(L[$i,$i],A[$i,$j])"
+            Aij = A_[i,j]
+            @dspawn begin
+                @R  Aii # data in L
+                @RW Aij
+                TriangularSolve.ldiv!(L,Aij,tturbo)
+            end label="ldiv(L[$i,$i],A[$i,$j])"
         end
         for j in i+1:m
-            Aij = A[i,j]
+            Aij = A_[i,j]
             for k in j:n
                 # TODO: for k = j, only the upper part needs to be updated,
                 # dividing the cost of that operation by two
-                Ajk = A[j,k]
+                Ajk = A_[j,k]
                 Aji = adjoint(Aij)
-                Aik = A[i,k]
+                Aik = A_[i,k]
                 @dspawn begin
                     @RW Ajk
-                    @R Aij Aik
+                    @R Aij # data in Aij
+                    @R Aik
                     schur_complement!(Ajk,Aji,Aik,tturbo)
                 end label="schur!(A[$j,$k],A[$j,$i],A[$i,$k])"
             end
         end
     end
+    if C
+        # copy back to standard format if needed
+        for i in 1:m
+            for j in i:n
+                @dspawn copy!(@W(A[i,j]),@R(A_[i,j])) label="copyout($i,$j)"
+            end
+        end
+    end
     # create the factorization object. Note that fetching this will force to
     # wait on all previous tasks
-    res = @dspawn Cholesky(@R(A.data),'U',zero(LinearAlgebra.BlasInt))
+    res = @dspawn Cholesky(@R(A.data),'U',zero(LinearAlgebra.BlasInt)) label="Cholesky"
     return fetch(res)
 end
 

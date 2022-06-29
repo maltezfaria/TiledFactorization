@@ -17,7 +17,6 @@ using TiledFactorization
 using LinearAlgebra
 using BenchmarkTools
 
-
 import TiledFactorization as TF
 
 nt = Threads.nthreads()
@@ -38,6 +37,7 @@ nn    = 1000:500:5000 |> collect
 t_blas = Float64[]
 t_forkjoin = Float64[]
 t_dataflow = Float64[]
+t_dataflow_copy = Float64[]
 
 for m in nn
     # create an SPD matrix
@@ -52,8 +52,10 @@ for m in nn
 
     # test DataFlowTasks parallelism
     @info "Dataflow pseudotiled cholesky"
-    b = @benchmark TiledFactorization.cholesky!(B) setup=(B=copy($A)) evals=1
+    b = @benchmark TiledFactorization.cholesky!(B;copy=Val(false)) setup=(B=copy($A)) evals=1
     push!(t_dataflow,median(b).time)
+    b = @benchmark TiledFactorization.cholesky!(B;copy=Val(true)) setup=(B=copy($A)) evals=1
+    push!(t_dataflow_copy,median(b).time)
 
     # test fork-join parallelism
     @info "Forkjoin cholesky"
@@ -76,6 +78,7 @@ for m in nn
     @info "er_blas           = $er_blas"
     @info "t_blas            = $(t_blas[end])"
     @info "t_dataflow        = $(t_dataflow[end])"
+    @info "t_dataflow_copy   = $(t_dataflow_copy[end])"
     @info "t_forkjoin        = $(t_forkjoin[end])"
     println("="^80)
 end
@@ -86,6 +89,7 @@ if PLOT
     plot(nn,flops./(t_blas),label=USEMKL ? "MKL" : "OpenBLAS",xlabel="n",ylabel="GFlops/second",m=:x,title="Cholesky factorization",legend=:bottomright)
     plot!(nn,flops./(t_forkjoin),label="TiledFactorization (forkjoin)",m=:x)
     plot!(nn,flops./(t_dataflow),label="TiledFactorization (dataflow)",m=:x)
+    plot!(nn,flops./(t_dataflow_copy),label="TiledFactorization (dataflow with copy)",m=:x)
     SAVEFIG && savefig(joinpath(TiledFactorization.PROJECT_ROOT,"benchmarks/choleskyperf_capacity_$(capacity)_tilesize_$(tilesize).png"))
     # peakflops vary, not sure how to measure it. Maybe use cpuinfo?
     # peak = LinearAlgebra.peakflops()

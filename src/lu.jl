@@ -42,8 +42,8 @@ function _lu!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
         end
     end
     # wait for all computations before returning
-    DataFlowTasks.sync()
-    return LU(A.data,LinearAlgebra.BlasInt[],zero(LinearAlgebra.BlasInt))
+    res = @dspawn LU(@R(A.data),LinearAlgebra.BlasInt[],zero(LinearAlgebra.BlasInt)) label="LU"
+    return fetch(res)
 end
 
 # a fork-join approach for comparison with the data-flow parallelism

@@ -6,7 +6,7 @@ using Plots
 
 import TiledFactorization as TF
 
-capacity = 50
+capacity = 100
 sch = DataFlowTasks.JuliaScheduler(capacity)
 DataFlowTasks.setscheduler!(sch)
 
@@ -29,7 +29,7 @@ DataFlowTasks.resetlogger!()
 F = TF.cholesky!(B,tile_size)
 @info "Number of tasks = $(DataFlowTasks.TASKCOUNTER[])"
 @info "Number of threads = $(Threads.nthreads())"
-plot(logger;categories=["chol","ldiv","schur"])
+plot(logger;categories=["chol","ldiv","schur","copyin","copyout","Cholesky"])
 
 # using GraphViz: Graph
 # Graph(DataFlowTasks.logger_to_dot(logger))
