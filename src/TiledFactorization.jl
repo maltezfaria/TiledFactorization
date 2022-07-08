@@ -12,7 +12,12 @@ using LoopVectorization
 using RecursiveFactorization
 using TriangularSolve
 using Octavian
+
 using BenchmarkTools
+using FileIO
+using Match
+using DataFrames, CSV
+using CairoMakie
 
 using DataFlowTasks
 
@@ -58,5 +63,6 @@ include("utils.jl")
 include("tiledmatrix.jl")
 include("cholesky.jl")
 include("lu.jl")
+include("benchmark.jl")
 
 end

@@ -9,6 +9,9 @@ cholesky(A::Matrix,args...) = cholesky!(deepcopy(A),args...)
 function cholesky!(A::Matrix,s=TILESIZE[],tturbo::Val{T}=Val(false)) where {T}
     _cholesky!(PseudoTiledMatrix(A,s),tturbo)
 end
+function cholesky_forkjoin!(A::Matrix,s=TILESIZE[],tturbo::Val{T}=Val(false)) where {T}
+    _cholesky_forkjoin!(PseudoTiledMatrix(A,s),tturbo)
+end
 
 # tiled cholesky factorization
 function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
