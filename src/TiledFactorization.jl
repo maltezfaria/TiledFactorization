@@ -12,12 +12,11 @@ using LoopVectorization
 using RecursiveFactorization
 using TriangularSolve
 using Octavian
-
+using Requires
 using BenchmarkTools
 using FileIO
 using Match
 using DataFrames, CSV
-using CairoMakie
 
 using DataFlowTasks
 
@@ -64,5 +63,10 @@ include("tiledmatrix.jl")
 include("cholesky.jl")
 include("lu.jl")
 include("benchmark.jl")
+
+function __init__()
+    # CairoMakie conditionnal loading
+    @require CairoMakie="13f3f980-e62b-5c42-98c6-ff1f3baf88f0" include("plots.jl")
+end
 
 end

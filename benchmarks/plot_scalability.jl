@@ -1,3 +1,4 @@
+using CairoMakie
 using TiledFactorization
 import TiledFactorization as TF
 
