@@ -12,6 +12,7 @@ using LoopVectorization
 using RecursiveFactorization
 using TriangularSolve
 using Octavian
+using Dagger
 using Requires
 using BenchmarkTools
 using FileIO

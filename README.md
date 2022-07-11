@@ -22,6 +22,13 @@ TF.benchmark(names, sizes)
 You can visualize benchmarks with :
 
 ```
+using CairoMakie
+using TiledFactorization
+import TiledFactorization as TF
+```
+for includes, and :
+
+```
 names = ["openblas", "dft"]
 machine = gethostname()
 nthreads = [1, 2, 4, 8]
