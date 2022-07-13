@@ -1,8 +1,5 @@
-@info "Loading benchmark utilities packages"
-using CairoMakie
-
 """
-plot_scalability(names::Vector{String}, nthreads::Vector{Int}, machine::String, size::Int)  
+    plot_scalability(names::Vector{String}, nthreads::Vector{Int}, machine::String, size::Int)  
 Plot variation of performance depending on `nthreads` for all `names` benchmarks ran on `machine`
 at `size`
 """
@@ -37,16 +34,30 @@ function plot_scalability(names::Vector{String}, nthreads::Vector{Int}, machine:
         lines!(
             ax,
             x, ys[name],
-            label = name
+            label = name,
+            linewidth = 3
+        )
+        scatter!(
+            ax,
+            x, ys[name],
+            color = :white,
+            strokewidth = 2,
+            strokecolor = :black
         )
     end
 
-    axislegend()
+    # Legend
+    axislegend(position = :lt)
+
+    # Save image
+    save(f, "scala", names, machine)
+
+    
     f
 end
 
 """
-plot_sizes(names::Vector{String}, sizes::Vector{Int}, machine, nthreads)  
+    plot_sizes(names::Vector{String}, sizes::Vector{Int}, machine, nthreads)  
 Plot variation of performance depending on `size` for all `names` benchmarks ran on `machine`
 at `nthreads`    
 """
@@ -84,10 +95,41 @@ function plot_sizes(names::Vector{String}, sizes::Vector{Int}, machine, nthreads
         lines!(
             ax,
             x, ys[name],
-            label = name
+            label = name,
+            linestyle = :solid,
+            linewidth = 3
+        )
+        scatter!(
+            ax,
+            x, ys[name],
+            color = :white,
+            strokewidth = 2,
+            strokecolor = :black
         )
     end
 
-    axislegend()
+    # Legend
+    axislegend(position = :lt)
+
+    # Save image
+    save(f, "sizes", names, machine)
+
+    # Display
     f
+end
+
+
+function save(f::Figure, type::String, names::Vector{String}, machine::String)
+    # File name -> type_n1_n2.svg
+    filename = "$(type)_"
+    for name ∈ names
+        filename *= "$(name[1:2])_"
+    end
+
+    # Filepath
+    subfolder = joinpath(PROJECT_ROOT, "fig")
+    filename = joinpath(subfolder, filename)
+    filename *= "_$(machine).svg"
+
+    CairoMakie.save(filename, f)
 end

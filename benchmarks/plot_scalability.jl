@@ -1,4 +1,3 @@
-using CairoMakie
 using TiledFactorization
 import TiledFactorization as TF
 
@@ -9,4 +8,4 @@ machine = "LEGION"
 size = 3000
 
 # Plot
-TF.plot_scalability(names, nthreads, machine, size)
+f = TF.plot_scalability(names, nthreads, machine, size)

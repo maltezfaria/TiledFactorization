@@ -7,20 +7,19 @@ module TiledFactorization
 
 const PROJECT_ROOT =  pkgdir(TiledFactorization)
 
-using LinearAlgebra
+using LinearAlgebra, MKL
 using LoopVectorization
 using RecursiveFactorization
 using TriangularSolve
 using Octavian
 using Dagger
-using Requires
+using CairoMakie
 using BenchmarkTools
 using FileIO
 using Match
 using DataFrames, CSV
 
 using DataFlowTasks
-
 using DataFlowTasks: R,W,RW
 
 # FIXME: this probably belongs upstream at the DataFlowTasks package
@@ -64,10 +63,6 @@ include("tiledmatrix.jl")
 include("cholesky.jl")
 include("lu.jl")
 include("benchmark.jl")
-
-function __init__()
-    # CairoMakie conditionnal loading
-    @require CairoMakie="13f3f980-e62b-5c42-98c6-ff1f3baf88f0" include("plots.jl")
-end
+include("plots.jl")
 
 end

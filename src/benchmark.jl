@@ -16,6 +16,9 @@ function benchmark(names::Vector{String}, sizes::Vector{Int})
     for name ∈ names
         func = getfuncname(name)
         for size ∈ sizes
+            # Clean memory
+            GC.gc()
+            
             # Matrix
             A = rand(size, size)
             A = (A + adjoint(A))/2
@@ -87,6 +90,7 @@ function getfuncname(name::String)
         "dft"      => cholesky!
         "dagger"   => cholesky_dagger!
         "forkjoin" => cholesky_forkjoin!
+        "mkl"      => MKL.cholesky!
     end
 end
 
@@ -132,8 +136,8 @@ function loaddataframes(names::Vector{String}, machine::String, nthreads::Vector
     dtfs
 end
 
+# Gives the nb of flops for a matrix of size n
 flops(n) = 1/3*n^3 + 1/2*n^2
-
 
 """
     getparameters(filename::String)  
