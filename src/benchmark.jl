@@ -14,6 +14,8 @@ function benchmark(names::Vector{String}, sizes::Vector{Int})
     BLAS.set_num_threads(nthreads)
 
     for name ∈ names
+        # Print Informations
+        @info "================ $name ================"
         func = getfuncname(name)
         for size ∈ sizes
             # Clean memory
@@ -27,6 +29,11 @@ function benchmark(names::Vector{String}, sizes::Vector{Int})
             # Benchmark
             b = @benchmark $func(B) setup=(B=copy($A)) evals=1
             t = median(b).time * 10^(-9)
+
+            # Print Informations
+            @info "$(BLAS.get_config())"
+            @info "$size ----> $t"
+
 
             # Filename
             file = getfilepath(name, machine, nthreads)
@@ -87,10 +94,10 @@ Give correspondant function for name
 function getfuncname(name::String)
     @match name begin
         "openblas" => LinearAlgebra.cholesky!
-        "dft"      => cholesky!
-        "dagger"   => cholesky_dagger!
+        "dft"      => TiledFactorization.cholesky!
+        "dagger"   => TiledFactorization.cholesky_dagger!
         "forkjoin" => cholesky_forkjoin!
-        "mkl"      => MKL.cholesky!
+        "mkl"      => LinearAlgebra.cholesky!
     end
 end
 

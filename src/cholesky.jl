@@ -45,10 +45,8 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
             end
         end
     end
-    # create the factorization object. Note that fetching this will force to
-    # wait on all previous tasks
-    res = @dspawn Cholesky(@R(A.data),'U',zero(LinearAlgebra.BlasInt))
-    return fetch(res)
+    DataFlowTasks.sync()
+    return Cholesky(A.data,'U',zero(LinearAlgebra.BlasInt))
 end
 
 # a fork-join approach for comparison with the data-flow parallelism

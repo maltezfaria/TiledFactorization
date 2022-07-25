@@ -4,29 +4,48 @@ Plot variation of performance depending on `nthreads` for all `names` benchmarks
 at `size`
 """
 function plot_scalability(names::Vector{String}, nthreads::Vector{Int}, machine::String, size::Int)
+    # Extract data
     dtfs = loaddataframes(names, machine, nthreads)
+
+    # Number of set of parameters 
+    nsetparam = length(names) * length(nthreads) 
+    length(dtfs) != nsetparam && error("We didn't find all the data you were looking for")
 
     f = Figure()
     ax = Axis(
         f[1,1],
-        title="Scalability",
+        title="Scalability on a $(size)x$(size) matrix\nOn $machine",
         xlabel="Nthreads", ylabel="GFlops",
         xticks = nthreads
     )
+
+    # X axis
     x = nthreads
 
     # Vetor of data for each name
     ys = Dict{String, Vector{Float64}}()
     for name ∈ names
-        push!(ys, name => Vector{Float64}())
+        push!(ys, name => Vector{Float64}(undef, length(nthreads)))
     end
 
     # Extract data
     fl = flops(size)
     for (param, dtf) ∈ dtfs
         i = findfirst(x->x==size, dtf[:, 1])
+
+        # Error : didn't find data
+        if i === nothing
+            params = [param.name, param.machine, param.nthreads]
+            params = string.(params) .* " "
+            error("Didn't find [$size] entry in data file for [$(params...)]")
+        end
+
+        # Y data : Performance in GFlops
         t = fl/(dtf[i, 2] * 10^9)
-        !(i===nothing) && push!(ys[param.name], t)
+
+        # Insert in Y data storage (ys) at the right index
+        idx = findfirst(x->x==param.nthreads, nthreads)
+        ys[param.name][idx] = t
     end
 
     # Plot
