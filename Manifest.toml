@@ -235,7 +235,9 @@ version = "1.10.0"
 
 [[deps.DataFlowTasks]]
 deps = ["DataStructures", "LinearAlgebra", "Requires", "StaticArrays", "ThreadPools"]
-path = "C:\\dev\\Julia\\StageTriscaleInnov\\DataFlowTasks.jl"
+git-tree-sha1 = "5f70e5b50e2c9a85aa070cae870e01aeb4f45799"
+repo-rev = "main"
+repo-url = "https://github.com/maltezfaria/DataFlowTasks.jl.git"
 uuid = "d1549cb6-e9f4-42f8-98cc-ffc8d067ff5b"
 version = "0.1.0"
 
