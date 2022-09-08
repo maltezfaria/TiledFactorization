@@ -20,7 +20,11 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
         L = adjoint(U)
         for j in i+1:n
             Aij = A[i,j]
-            @dspawn TriangularSolve.ldiv!(@R(L),@RW(Aij),tturbo) label="ldiv(L[$i,$i],A[$i,$j])"
+            @dspawn begin
+                @R Aii
+                @RW Aij
+                TriangularSolve.ldiv!(L,Aij,tturbo)
+            end label="ldiv(L[$i,$i],A[$i,$j])"
         end
         for j in i+1:m
             Aij = A[i,j]
@@ -32,7 +36,7 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
                 Aik = A[i,k]
                 @dspawn begin
                     @RW Ajk
-                    @R Aij Aik
+                    @R  Aij Aik
                     schur_complement!(Ajk,Aji,Aik,tturbo)
                 end label="schur!(A[$j,$k],A[$j,$i],A[$i,$k])"
             end

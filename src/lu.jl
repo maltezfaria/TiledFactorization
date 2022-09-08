@@ -5,6 +5,9 @@
     `DataFlowTask`s.
 =#
 
+# compatibility with <=1.6
+const NOPIVOT = VERSION >= v"1.7" ? NoPivot : Val{false}
+
 lu(A::Matrix,args...) = lu!(deepcopy(A),args...)
 
 function lu!(A::Matrix,s=TILESIZE[],tturbo::Val{T}=Val(false)) where {T}
@@ -17,7 +20,7 @@ function _lu!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
         Aii = A[i,i]
         # TODO: for simplicity, no pivot is allowed. Pivoting the diagonal
         # blocks requires permuting the corresponding row/columns before continuining
-        @dspawn RecursiveFactorization.lu!(@RW(Aii),NoPivot(),tturbo)
+        @dspawn RecursiveFactorization.lu!(@RW(Aii),NOPIVOT(),tturbo)
         # @dspawn LinearAlgebra.lu!(Aii) (Aii,) (RW,)
         for j in i+1:n
             Aij = A[i,j]
@@ -41,9 +44,10 @@ function _lu!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
             end
         end
     end
-    # wait for all computations before returning
-    DataFlowTasks.sync()
-    return LU(A.data,LinearAlgebra.BlasInt[],zero(LinearAlgebra.BlasInt))
+    # create the factorization object. Note that fetching this will force to
+    # wait on all previous tasks
+    res = @dspawn LU(@R(A.data),LinearAlgebra.BlasInt[],zero(LinearAlgebra.BlasInt))
+    return fetch(res)
 end
 
 # a fork-join approach for comparison with the data-flow parallelism
@@ -53,7 +57,7 @@ function _lu_forkjoin!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
         Aii = A[i,i]
         # FIXME: for simplicity, no pivot is allowed. Pivoting the diagonal
         # blocks requires permuting the corresponding row/columns before continuining
-        RecursiveFactorization.lu!(Aii,NoPivot(),tturbo)
+        RecursiveFactorization.lu!(Aii,NOPIVOT(),tturbo)
         Threads.@threads for j in i+1:n
             Aij = A[i,j]
             Aji = A[j,i]
@@ -69,7 +73,5 @@ function _lu_forkjoin!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
             end
         end
     end
-    # wait for all computations before returning
-    DataFlowTasks.sync()
     return LU(A.data,LinearAlgebra.BlasInt[],zero(LinearAlgebra.BlasInt))
 end
