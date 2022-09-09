@@ -7,15 +7,19 @@ module TiledFactorization
 
 const PROJECT_ROOT =  pkgdir(TiledFactorization)
 
-using LinearAlgebra
+using LinearAlgebra, MKL
 using LoopVectorization
 using RecursiveFactorization
 using TriangularSolve
 using Octavian
+using Dagger
+using CairoMakie
 using BenchmarkTools
+using FileIO
+using Match
+using DataFrames, CSV
 
 using DataFlowTasks
-
 using DataFlowTasks: R,W,RW
 
 function schur_complement!(C,A,B,threads::Val{T}=Val(false)) where {T}
@@ -49,5 +53,7 @@ include("utils.jl")
 include("tiledmatrix.jl")
 include("cholesky.jl")
 include("lu.jl")
+include("benchmark.jl")
+include("plots.jl")
 
 end

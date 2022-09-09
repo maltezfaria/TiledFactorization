@@ -6,8 +6,15 @@
 
 cholesky(A::Matrix,args...) = cholesky!(deepcopy(A),args...)
 
+# Wrappers
 function cholesky!(A::Matrix,s=TILESIZE[],tturbo::Val{T}=Val(false)) where {T}
     _cholesky!(PseudoTiledMatrix(A,s),tturbo)
+end
+function cholesky_forkjoin!(A::Matrix,s=TILESIZE[],tturbo::Val{T}=Val(false)) where {T}
+    _cholesky_forkjoin!(PseudoTiledMatrix(A,s),tturbo)
+end
+function cholesky_dagger!(A::Matrix, s=TILESIZE[], tturbo::Val{T}=Val(false)) where {T}
+    _cholesky_dagger!(PseudoTiledMatrix(A,s), tturbo)
 end
 
 # tiled cholesky factorization
@@ -42,10 +49,8 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
             end
         end
     end
-    # create the factorization object. Note that fetching this will force to
-    # wait on all previous tasks
-    res = @dspawn Cholesky(@R(A.data),'U',zero(LinearAlgebra.BlasInt))
-    return fetch(res)
+    DataFlowTasks.sync()
+    return Cholesky(A.data,'U',zero(LinearAlgebra.BlasInt))
 end
 
 # a fork-join approach for comparison with the data-flow parallelism
@@ -73,6 +78,51 @@ function _cholesky_forkjoin!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) whe
     end
     return Cholesky(A.data,'U',zero(LinearAlgebra.BlasInt))
 end
+
+# Implementation
+function _cholesky_dagger!(A::PseudoTiledMatrix, tturbo::Val{T}=Val(false)) where {T}
+    # Number of blocks
+    m,n = size(A)
+
+    # Thunks init
+    thunks = Matrix{Dagger.EagerThunk}(undef, m, n)
+    for i ∈ 1:m, j ∈ 1:n
+        thunks[i, j] = Dagger.@spawn A[i, j] * 1.0
+    end
+
+    for i in 1:m
+        # Diagonal block
+        thunks[i, i] = Dagger.@spawn chol_task(thunks[i, i], tturbo)      
+        
+        L = adjoint(UpperTriangular(fetch(thunks[i, i])))
+
+        # Forward substitutions
+        for j in i+1:n
+            thunks[i, j] = Dagger.@spawn TriangularSolve.ldiv!(L,thunks[i, j], tturbo)
+        end
+
+        # Partial submatrix update
+        for j in i+1:m
+            Aji = adjoint(fetch(thunks[i, j]))
+            for k in j:n
+                thunks[j, k] = Dagger.@spawn Octavian.matmul_serial!(thunks[j, k], Aji, thunks[i, k],-1,1)
+            end
+        end
+    end
+
+    for i ∈ 1:m, j ∈ i:n
+        A[i, j] .= fetch(thunks[i, j])
+    end
+
+    return Cholesky(A.data,'U',zero(LinearAlgebra.BlasInt))
+end
+
+# Utility spawn thunk
+function chol_task(Aii, tturbo)
+    _chol!(Aii,UpperTriangular,tturbo)
+    Aii
+end
+
 
 # Modified from the generic version from LinearAlgebra (MIT license).
 function _chol!(A::AbstractMatrix{<:Real}, ::Type{UpperTriangular},tturbo::Val{T}=Val(false)) where {T}
@@ -114,6 +164,7 @@ function _chol!(A::AbstractMatrix{<:Real}, ::Type{UpperTriangular},tturbo::Val{T
     end
     return UpperTriangular(A), convert(Int32, 0)
 end
+
 
 ## Numbers
 function _chol!(x::Number, uplo)
