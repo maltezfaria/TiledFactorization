@@ -13,33 +13,11 @@ using RecursiveFactorization
 using TriangularSolve
 using Octavian
 using BenchmarkTools
+using Serialization
 
 using DataFlowTasks
 
 using DataFlowTasks: R,W,RW
-
-function schur_complement!(C,A,B,threads::Val{T}=Val(false)) where {T}
-    if T
-        Octavian.matmul!(C,A,B,-1,1)
-    else
-        Octavian.matmul_serial!(C,A,B,-1,1)
-    end
-end
-
-function pick_tile_size()
-    @info "Timing schur complement for different tile sizes..."
-    dict = Dict{Int,Float64}()
-    for n in [64,128,256,512,1024]
-        C,A,B = rand(n,n),rand(n,n),rand(n,n)
-        flops = 2*n^3 + 2*n^2
-        t = @belapsed schur_complement!($C,$A,$B)
-        gflops = flops / (t) / 1e9
-        println("\tn=$n, \tgflops=$gflops")
-        push!(dict,n=>gflops)
-    end
-    @info "Done."
-    return dict
-end
 
 const TILESIZE = Ref(256)
 
@@ -49,5 +27,38 @@ include("utils.jl")
 include("tiledmatrix.jl")
 include("cholesky.jl")
 include("lu.jl")
+
+function benchmark(methods,sizes;overwrite=false)
+    hostname = gethostname()
+    nt = Threads.nthreads()
+    BLAS.set_num_threads(nt)
+    # full path where serialized data will be stored
+    fname = joinpath(PROJECT_ROOT,"benchmarks","data.jls")
+    # if file already exists data will be appended to it
+    if isfile(fname)
+        @info "Appending benchmark data to existing file"
+        data = deserialize(fname)
+    else
+        @info "Creating new data file for benchmarks"
+        data = Dict()
+    end
+    # loop over sizes and methods and store the execution time
+    for sz in sizes
+        A = spd_matrix(sz)
+        for f in methods
+            key = (;hostname,threads=nt,method=repr(f),size=sz)
+            if haskey(data,key)
+                overwrite || (@show "skipping entry (key already found)"; continue)
+            end
+            # Benchmark
+            b = @benchmark ($f)(B) setup=(B=copy($A)) evals=1
+            t = median(b).time * 10^(-9)
+            data[key] = t
+            println("$key \t --> \t $t")
+        end
+    end
+    serialize(fname,data)
+    return data
+end
 
 end
