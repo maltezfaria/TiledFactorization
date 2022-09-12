@@ -59,7 +59,6 @@ function plot_scalability_chol(methods, sz::Int, nthreads=1:typemax(Int), host=g
     threads = Dict(m=>[] for m in methods)
     gflops = Dict(m=>[] for m in methods)
     for (k,v) in data
-        @show k
         n = k.size
         if n == sz && k.threads ∈ nthreads
             g = (1/3*n^3 + 1/2*n^2) / v / 1e9# flops per second

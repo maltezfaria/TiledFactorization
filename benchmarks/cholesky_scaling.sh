@@ -4,10 +4,11 @@
 # the project root of TiledFactorization. Assumes that MKL, BenchmarkTools and
 # Plots packages are available on your environment
 
-for t in 1 2 4 8
+for t in 1 2 4 8 16
 do
 echo $t threads
 julia --project --threads=$t -e '
+    using MKL
     using TiledFactorization
     include(joinpath(TiledFactorization.PROJECT_ROOT,"benchmarks","utils.jl"))
     methods = [TiledFactorization.cholesky!,LinearAlgebra.cholesky!]
@@ -22,6 +23,6 @@ julia --project -e '
     methods = ["TiledFactorization.cholesky!","LinearAlgebra.cholesky!"]
     sz = 5000
     fig = plot_scalability_chol(methods,sz)
-    savefig(fig,joinpath(TiledFactorization.PROJECT_ROOT,"benchmarks","scalability_chol.png"))
+    savefig(fig,joinpath(TiledFactorization.PROJECT_ROOT,"benchmarks","cholesky_scaling.png"))
 '
 
