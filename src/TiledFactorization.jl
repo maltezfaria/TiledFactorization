@@ -14,7 +14,7 @@ using TriangularSolve
 
 using DataFlowTasks
 
-using DataFlowTasks: R,W,RW
+using DataFlowTasks: @spawn
 
 const TILESIZE = Ref(256)
 

@@ -20,12 +20,12 @@ function _lu!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
         Aii = A[i,i]
         # TODO: for simplicity, no pivot is allowed. Pivoting the diagonal
         # blocks requires permuting the corresponding row/columns before continuining
-        @dspawn RecursiveFactorization.lu!(@RW(Aii),NOPIVOT(),tturbo)
-        # @dspawn LinearAlgebra.lu!(Aii) (Aii,) (RW,)
+        @spawn RecursiveFactorization.lu!(@RW(Aii),NOPIVOT(),tturbo)
+        # @spawn LinearAlgebra.lu!(Aii) (Aii,) (RW,)
         for j in i+1:n
             Aij = A[i,j]
             Aji = A[j,i]
-            @dspawn begin
+            @spawn begin
                 @R Aii
                 @RW Aij Aji
                 TriangularSolve.ldiv!(UnitLowerTriangular(Aii),Aij,tturbo)
@@ -39,14 +39,14 @@ function _lu!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
                 Ajk = A[j,k]
                 Aji = A[j,i]
                 Aik = A[i,k]
-                @dspawn schur_complement!(@RW(Ajk),@R(Aji),@R(Aik),tturbo)
+                @spawn schur_complement!(@RW(Ajk),@R(Aji),@R(Aik),tturbo)
                 # schur_complement!(Ajk,Aji,Aik,tturbo)
             end
         end
     end
     # create the factorization object. Note that fetching this will force to
     # wait on all previous tasks
-    res = @dspawn LU(@R(A.data),LinearAlgebra.BlasInt[],zero(LinearAlgebra.BlasInt))
+    res = @spawn LU(@R(A.data),LinearAlgebra.BlasInt[],zero(LinearAlgebra.BlasInt))
     return fetch(res)
 end
 

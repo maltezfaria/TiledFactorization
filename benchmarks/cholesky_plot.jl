@@ -17,7 +17,6 @@ using TiledFactorization
 using LinearAlgebra
 using BenchmarkTools
 
-
 import TiledFactorization as TF
 
 nt = Threads.nthreads()
@@ -28,8 +27,8 @@ BLAS.set_num_threads(nt)
 @info "Julia threads = $nt"
 
 capacity = 50
-sch = DataFlowTasks.JuliaScheduler(capacity)
-DataFlowTasks.setscheduler!(sch)
+taskgraph = DataFlowTasks.TaskGraph(capacity)
+DataFlowTasks.set_active_taskgraph!(taskgraph)
 
 tilesize = 256
 TF.TILESIZE[] = tilesize
