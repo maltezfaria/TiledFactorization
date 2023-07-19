@@ -21,7 +21,7 @@ julia --project --threads=$t -e '
     include(joinpath(TiledFactorization.PROJECT_ROOT,"benchmarks","utils.jl"))
     methods = [TiledFactorization.cholesky!,LinearAlgebra.cholesky!]
     sizes = [5000]
-    benchmark(methods, sizes; overwrite=false)
+    benchmark(methods, sizes; overwrite=true)
 '
 done
 
