@@ -19,12 +19,12 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
     m,n = size(A) # number of blocks
     for i in 1:m
         Aii = A[i,i]
-        @spawn _chol!(@RW(Aii),UpperTriangular,tturbo) label="chol[$i,$i]"
+        @dspawn _chol!(@RW(Aii),UpperTriangular,tturbo) label="chol[$i,$i]"
         U = UpperTriangular(Aii)
         L = adjoint(U)
         for j in i+1:n
             Aij = A[i,j]
-            @spawn begin
+            @dspawn begin
                 @R Aii
                 @RW Aij
                 TriangularSolve.ldiv!(L,Aij,tturbo)
@@ -38,7 +38,7 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
                 Ajk = A[j,k]
                 Aji = adjoint(Aij)
                 Aik = A[i,k]
-                @spawn begin
+                @dspawn begin
                     @RW Ajk
                     @R  Aij Aik
                     schur_complement!(Ajk,Aji,Aik,tturbo)
@@ -48,7 +48,7 @@ function _cholesky!(A::PseudoTiledMatrix,tturbo::Val{T}=Val(false)) where {T}
     end
     # create the factorization object. Note that fetching this will force to
     # wait on all previous tasks
-    res = @spawn Cholesky(@R(A.data),'U',zero(LinearAlgebra.BlasInt))
+    res = @dspawn Cholesky(@R(A.data),'U',zero(LinearAlgebra.BlasInt))
     return fetch(res)
 end
 
