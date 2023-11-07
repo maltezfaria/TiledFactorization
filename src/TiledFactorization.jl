@@ -14,8 +14,6 @@ using TriangularSolve
 
 using DataFlowTasks
 
-using DataFlowTasks: @spawn
-
 const TILESIZE = Ref(256)
 
 settilesize!(n::Int) = (TILESIZE[]=n)
